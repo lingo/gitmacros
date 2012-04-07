@@ -1,0 +1,14 @@
+#!/bin/bash
+
+DIR=$PWD
+if [ $# -gt 0 ]; then
+	DIR="${PWD}/$1"
+	DIR=${DIR%/}
+fi
+
+RDIR=$(basename "$DIR")
+cd "$DIR"
+URI=$(git remote -v | grep fetch | awk '{print $2}')
+cd -
+git submodule add "$URI" "$RDIR"
+git commit -m "Added submodule $RDIR ($URI)" "$RDIR" .gitmodules

@@ -1,0 +1,41 @@
+#!/bin/bash
+
+function usage() {
+	echo "Usage: $0 [-l] [remote]"
+	exit 1
+}
+
+REMOTE="origin"
+LIST=""
+RARG=""
+
+while getopts "lhr:" opt; do
+	case $opt in
+		h) usage  ;;
+		l) LIST=1 ;;
+		r) RARG="$OPTARG" ;;
+		*) usage ;;
+	esac
+done
+shift $(( $OPTIND - 1 ))
+
+RARG="${RARG:-$1}"
+
+REMOTE="${RARG:-$REMOTE}"
+if [ -z "$REMOTE" ]; then
+	REMOTE="origin"
+fi
+
+URL=$(git config "remote.$REMOTE.url")
+
+HOST=$(echo -n $URL | sed -r 's@.+://([^/:]+).+@\1@')
+RPATH=$(echo -n $URL | sed -r 's@.+://[^/:]+(.+)$@\1@;s/\/\.git$//')
+
+[ -z "$LIST" ] && echo "SSH to $HOST"
+[ -z "$LIST" ] && echo "And CD to $RPATH"
+
+if [ -n "$LIST" ]; then
+	echo "ssh $HOST:$RPATH"
+else
+	ssh -t "$HOST" "cd \"$RPATH\"; bash";
+fi

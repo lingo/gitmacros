@@ -1,0 +1,15 @@
+#!/bin/sh
+
+FN=$1
+if [ "x$FN" = "x" ]; then
+	echo "Usage: $0 <file> [<REV>]"
+	exit 1
+fi
+
+REV=${2:-HEAD^}
+
+OUTFN="${REV}_${FN}"
+OUTFN=$(echo "$OUTFN" | sed -r 's/\W+/_/g')
+git cat-file blob "${REV}:${FN}" > "/tmp/$OUTFN"
+echo "$FN $REV $OUTFN"
+meld "/tmp/$OUTFN" $FN
