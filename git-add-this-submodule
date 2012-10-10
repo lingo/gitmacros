@@ -7,8 +7,8 @@ if [ $# -gt 0 ]; then
 fi
 
 RDIR=$(basename "$DIR")
-cd "$DIR"
+cd "$DIR" >/dev/null
 URI=$(git remote -v | grep fetch | awk '{print $2}')
-cd -
+cd - > /dev/null
 git submodule add "$URI" "$RDIR"
 git commit -m "Added submodule $RDIR ($URI)" "$RDIR" .gitmodules

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Find files which have only had their filemode changed, not the content, and print out their filenames,
+# then pipe this to git checkout HEAD
+FILES=$(git diff --numstat | awk '{ if (($1 == "-" && $2 == "-") || ($1 == "0" && $2 == "0")) print $3 }')
+
+if [ "x$FILES" != "x" ]; then
+	echo "The following files have had their modes changed:"
+	git diff --numstat | awk 'BEGIN { ORS="\0" } { if (($1 == "-" && $2 == "-") || ($1 == "0" && $2 == "0")) print $3 }' | xargs -n1 -0 git diff HEAD;
+	echo -e -n "\n\nRevert these files to HEAD version (y/N) ? "
+	read X
+	if [ "$X" = "y" ]; then
+		git diff --numstat | awk 'BEGIN { ORS="\0" } { if (($1 == "-" && $2 == "-") || ($1 == "0" && $2 == "0")) print $3 }' | xargs -n1 -0 git checkout HEAD
+	else
+		echo "Files left unchanged."
+	fi
+fi

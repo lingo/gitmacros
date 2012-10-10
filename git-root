@@ -1,0 +1,8 @@
+#!/bin/bash
+
+STARTDIR="$PWD"
+while [ ! -d $PWD/.git -a "$PWD" != "/" ]; do
+    cd ..
+done
+echo "$PWD"
+cd "$STARTDIR"

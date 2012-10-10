@@ -1,0 +1,40 @@
+#!/bin/bash
+
+if [ "$1" = '-h' -o "$1" = '--help' ]; then
+	echo "Usage: $0 [target_repo_name]"
+	exit 1
+fi
+target="$1"
+repo=$(basename $PWD)
+src="$PWD"
+pushd ~/Dropbox/code > /dev/null 
+
+if [ "x$target" != "x" ]; then
+	if [ "${target%%.git}" = $target ]; then
+		target="${target}.git"
+	fi	
+	repo="$target"
+else
+	target="$repo"
+fi
+
+git clone --bare $src $target
+if [ $? -ne 0 ]; then
+	echo "Failed to create remote repo -- may already exist by this name?"
+	popd > /dev/null
+	exit 1
+fi
+
+ssh dev.speak.geek.nz "mkdir /var/cache/git/$target && cd /var/cache/git/$target && git init --bare"
+(cd ~/Dropbox/code/${repo} \
+git remote add speakgeek git+ssh://dev.speak.geek.nz/var/cache/git/$i \
+git push -f --all speakgeek \
+cp ~/bin/dropgit_post_receive_hook hooks/post-receive
+)
+
+popd > /dev/null
+
+git remote add dropbox ~/Dropbox/code/${repo}
+git fetch dropbox
+git branch --set-upstream master remotes/dropbox/master
+git push dropbox
