@@ -10,13 +10,17 @@ src="$PWD"
 pushd ~/Dropbox/code > /dev/null 
 
 if [ "x$target" != "x" ]; then
-	if [ "${target%%.git}" = $target ]; then
+	if [ "${target%%.git}" == "$target" ]; then
 		target="${target}.git"
 	fi	
 	repo="$target"
 else
 	target="$repo"
+	if [ "${target%%.git}" == "$target" ]; then
+		target="${target}.git"
+	fi	
 fi
+
 
 git clone --bare $src $target
 if [ $? -ne 0 ]; then
