@@ -12,4 +12,11 @@ OUTFN="${REV}_${FN}"
 OUTFN=$(echo "$OUTFN" | sed -r 's/\W+/_/g')
 git cat-file blob "${REV}:${FN}" > "/tmp/$OUTFN"
 echo "$FN $REV $OUTFN"
-meld "/tmp/$OUTFN" $FN
+TOOL="$(git config diff.tool)"
+if [ "x$GIT_EXTERNAL_DIFF" != "x" ]; then
+	TOOL="$GIT_EXTERNAL_DIFF"
+fi
+if [ "x$TOOL" = "x" ]; then
+	TOOL="meld"
+fi
+$TOOL "/tmp/$OUTFN" $FN

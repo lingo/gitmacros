@@ -6,9 +6,16 @@ if [ $# -gt 0 ]; then
 	DIR=${DIR%/}
 fi
 
-RDIR=$(basename "$DIR")
+if [ $# -eq 0 ]; then
+# Extract this submodule's path based against git root
+ ROOT=`(cd ..; git-root)`;
+ THIS="${PWD##$ROOT}"
+ RDIR="${THIS##/}"
+else
+	RDIR=$(basename "$DIR")
+fi
 cd "$DIR" >/dev/null
-URI=$(git remote -v | grep fetch | awk '{print $2}')
+URI=$(git remote -v | grep origin | grep fetch | awk '{print $2}')
 cd - > /dev/null
-git submodule add "$URI" "$RDIR"
-git commit -m "Added submodule $RDIR ($URI)" "$RDIR" .gitmodules
+echo git submodule add "$URI" "$RDIR"
+echo git commit -m "Added submodule $RDIR ($URI)" "$RDIR" .gitmodules

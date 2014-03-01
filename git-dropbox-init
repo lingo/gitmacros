@@ -1,13 +1,24 @@
 #!/bin/bash
+# This allows you to keep a git repository store in your Dropbox folder.
+
+# Usage from within working directory:
+# git dropbox-init [dropbox-repo-name]
+#
+# If provided, dropbox-repo-name will be used instead of the default
+# which would be e.g. for a working dir named 'source', source.git
+
+BASE_DIR="~/Dropbox/code" # Change this to move your repository store
+
 
 if [ "$1" = '-h' -o "$1" = '--help' ]; then
 	echo "Usage: $0 [target_repo_name]"
 	exit 1
 fi
+
 target="$1"
 repo=$(basename $PWD)
 src="$PWD"
-pushd ~/Dropbox/code > /dev/null 
+pushd "$BASE_DIR" > /dev/null 
 
 if [ "x$target" != "x" ]; then
 	if [ "${target%%.git}" == "$target" ]; then
@@ -29,16 +40,9 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-ssh dev.speak.geek.nz "mkdir /var/cache/git/$target && cd /var/cache/git/$target && git init --bare"
-(cd ~/Dropbox/code/${repo} \
-git remote add speakgeek git+ssh://dev.speak.geek.nz/var/cache/git/$i \
-git push -f --all speakgeek \
-cp ~/bin/dropgit_post_receive_hook hooks/post-receive
-)
-
 popd > /dev/null
 
-git remote add dropbox ~/Dropbox/code/${repo}
+git remote add dropbox "${BASE_DIR}/${repo}"
 git fetch dropbox
 git branch --set-upstream master remotes/dropbox/master
 git push dropbox
