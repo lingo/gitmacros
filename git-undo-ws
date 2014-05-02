@@ -1,0 +1,14 @@
+function guw() {
+	if [ "x$1" = "x" ]; then
+		echo "Provide filename"
+		return
+	fi
+	FN="$1"
+	BKP="$1.$(date +%s)"	
+	cp "$FN" "$BKP"
+	PATCH="$(date +%s).patch"
+	git diff -w "$FN" > "$PATCH"
+	git checkout HEAD "$FN"
+	patch < "$PATCH"
+	echo "Removed whitespace changes from $FN, backup of previous file is in $BKP"
+}

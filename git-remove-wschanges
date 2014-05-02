@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if [ $# != 1 ]; then
+	echo "Usage: $0 <path/to/file>"
+	exit 1
+fi
+
+FILE="$1"
+tempfile=$(tempfile) || exit
+trap "rm -f -- '$tempfile' && echo Removed $tempfile" EXIT
+
+echo "Saving patch of non-whitespace changes to $tempfile"
+git diff -w "$FILE" > "$tempfile"
+echo "Backing up to $FILE.stagews"
+cp "$FILE" "$FILE.stagews"
+echo "Sleep 3 seconds before removing all changes (Press Ctrl+C to abort now)"
+sleep 3
+echo "Removing all changes"
+git checkout HEAD "$FILE"
+echo "Re-applying patch of only non-whitespace changes"
+patch -p0 "$FILE" < "$tempfile"
+if [ $? -ne 0 ]; then
+	echo "Patch failed, restoring backup"
+	cp "$FILE.stagews" "$FILE"
+else
+	echo "Patch succeeded, please delete $FILE.stagews"
+fi
+
+echo "Removing $tempfile"
+rm -f -- "$tempfile" 
+trap - EXIT 
+exit

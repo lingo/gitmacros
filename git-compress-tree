@@ -1,0 +1,2 @@
+#!/bin/bash
+PATH="/bin:/usr/bin" find . -name .git -type d -execdir sh -c 'echo $PWD; cd {} && git gc' \;
