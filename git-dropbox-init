@@ -7,7 +7,7 @@
 # If provided, dropbox-repo-name will be used instead of the default
 # which would be e.g. for a working dir named 'source', source.git
 
-BASE_DIR="~/Dropbox/code" # Change this to move your repository store
+BASE_DIR=~/Dropbox/code # Change this to move your repository store
 
 
 if [ "$1" = '-h' -o "$1" = '--help' ]; then
