@@ -1,14 +1,51 @@
+#!/bin/bash
+
+FN=""
+DATESTAMP=""
+BKP=""
+PATCH=""
+
+function restoreBackup() {
+	cp "$BKP" "$FN"
+}
+
 function guw() {
-	if [ "x$1" = "x" ]; then
-		echo "Provide filename"
-		return
-	fi
-	FN="$1"
-	BKP="$1.$(date +%s)"	
 	cp "$FN" "$BKP"
-	PATCH="$(date +%s).patch"
+	if [[ $? -ne 0 ]]; then
+		echo "Failed to make backup; abort."
+		exit 2
+	fi
 	git diff -w "$FN" > "$PATCH"
+	if [[ $? -ne 0 ]]; then
+		echo "Failed to create diff; abort"
+		exit 3
+	fi
 	git checkout HEAD "$FN"
-	patch < "$PATCH"
+	if [[ $? -ne 0 ]]; then
+		echo "Failed to checkout HEAD version; restoring backup"
+		restoreBackup
+		exit 4
+	fi
+
+	patch -p1 < "$PATCH"
+	if [[ $? -ne 0 ]]; then
+		echo -e "Failed to patch HEAD version; leaving changes, original file is\n$BKP"
+		exit 5
+	fi
 	echo "Removed whitespace changes from $FN, backup of previous file is in $BKP"
 }
+
+function setup() {
+	if [ "x$1" = "x" ]; then
+		echo "Provide filename"
+		exit 1
+	fi
+	FN="$1"
+	DATESTAMP="$(date +%s)"
+	BKP="${FN}_gitundows.${DATESTAMP}"
+	PATCH="${FN}_${DATESTAMP}.patch"
+}
+
+setup "$@"
+guw
+

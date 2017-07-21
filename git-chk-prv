@@ -10,8 +10,19 @@ REV=${2:-HEAD^}
 
 OUTFN="${REV}_${FN}"
 OUTFN=$(echo "$OUTFN" | sed -r 's/\W+/_/g')
+
+if [ "$3" = "-w" ]; then
+	git cat-file blob "${REV}:${FN}" > $FN
+	exit 0
+fi
+
 git cat-file blob "${REV}:${FN}" > "/tmp/$OUTFN"
 echo "$FN $REV $OUTFN"
+
+if [ "$3" = "-q" ]; then
+	exec diff -q "/tmp/$OUTFN" "$FN"
+fi
+
 TOOL="$(git config diff.tool)"
 if [ "x$GIT_EXTERNAL_DIFF" != "x" ]; then
 	TOOL="$GIT_EXTERNAL_DIFF"

@@ -9,7 +9,6 @@
 
 BASE_DIR=~/Dropbox/code # Change this to move your repository store
 
-
 if [ "$1" = '-h' -o "$1" = '--help' ]; then
 	echo "Usage: $0 [target_repo_name]"
 	exit 1
@@ -32,8 +31,7 @@ else
 	fi	
 fi
 
-
-git clone --bare $src $target
+git clone --bare "$src" "$target"
 if [ $? -ne 0 ]; then
 	echo "Failed to create remote repo -- may already exist by this name?"
 	popd > /dev/null
@@ -44,5 +42,5 @@ popd > /dev/null
 
 git remote add dropbox "${BASE_DIR}/${repo}"
 git fetch dropbox
-git branch --set-upstream master remotes/dropbox/master
+git branch --set-upstream-to master remotes/dropbox/master
 git push dropbox

@@ -1,16 +1,25 @@
 #!/bin/bash
 
+if [[ $1 == "-h" || $1 == '--help' ]]; then
+	echo "Usage: $0"
+	echo "Show files with only a mode-change and optionally revert these changes"
+	exit 0
+fi
 # Find files which have only had their filemode changed, not the content, and print out their filenames,
 # then pipe this to git checkout HEAD
 FILES=$(git diff --numstat | awk '{ if (($1 == "-" && $2 == "-") || ($1 == "0" && $2 == "0")) print $3 }')
 
 if [ "x$FILES" != "x" ]; then
 	echo "The following files have had their modes changed:"
-	git diff --numstat | awk 'BEGIN { ORS="\0" } { if (($1 == "-" && $2 == "-") || ($1 == "0" && $2 == "0")) print $3 }' | xargs -n1 -0 git diff HEAD;
+	git diff --numstat | awk '{ if (($1 == "-" && $2 == "-") || ($1 == "0" && $2 == "0")) print $3 }' 
 	echo -e -n "\n\nRevert these files to HEAD version (y/N) ? "
 	read X
 	if [ "$X" = "y" ]; then
-		git diff --numstat | awk 'BEGIN { ORS="\0" } { if (($1 == "-" && $2 == "-") || ($1 == "0" && $2 == "0")) print $3 }' | xargs -n1 -0 git checkout HEAD
+		# save all changes in case
+		git stash save "_gitmodechange$(date +%Y%m%d_%H%M%S)"
+		# Re-apply the changes before working
+		git stash apply
+		git diff --numstat | awk 'BEGIN { ORS="\0" } { if (($1 == "-" && $2 == "-") || ($1 == "0" && $2 == "0")) print $3 }' | xargs -0 git checkout HEAD
 	else
 		echo "Files left unchanged."
 	fi
