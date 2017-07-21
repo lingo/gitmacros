@@ -1,0 +1,11 @@
+#!/bin/bash
+
+files=$(find . -regex '\(.*\.\(BASE\|LOCAL\|REMOTE\|BACKUP\)\..*\)\|\(.*\.orig$\)\|\(.*~HEAD$\)' | sort)
+for f in $files; do
+	echo $f
+done
+echo -ne "\n\nDelete these? [y|N]: "
+read x
+if [[ $x == 'y' ]]; then
+	find . -regex '\(.*\.\(BASE\|LOCAL\|REMOTE\|BACKUP\)\..*\)\|\(.*\.orig$\)\|\(.*~HEAD$\)' -delete
+fi

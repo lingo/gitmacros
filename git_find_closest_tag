@@ -1,0 +1,139 @@
+#!/bin/bash
+## git_find_closest_tag v1.0
+## Copyright (C) Luke Hudson
+##
+## This program tries to determine the closet tag for a given directory.
+## Compare a directory to all the tags in remote
+## and determine the closest tag
+##
+## WARNING: The directory in question may be modified
+## WARNING: run this on a copy if unsure.
+##
+## Usage:
+##     @script.name [option] <DIR> <GIT REMOTE URL>
+##
+## Options:
+##     -h, --help              All client scripts have this by default,
+##                             it shows this double-hash documentation.
+##
+##     -p, --prompt            Prompt for each tag to examine diffs, or abort, or continue
+##
+##         --start-tag=VALUE   Do not compare tags until tag VALUE is reached
+##
+##
+THIS=$0
+DIR="$(readlink -f $(dirname "$THIS"))"
+
+START_TAG=""
+TARGETDIR=""
+REMOTE=""
+PROMPT=false
+
+function get_args() {
+	source $DIR/easyoptions.sh
+	if [[ $prompt == 'yes' ]]; then
+		PROMPT=true
+	fi
+	START_TAG="$start_tag"
+	TARGETDIR="${arguments[0]}"
+	if [[ -z $TARGETDIR ]]; then
+		show_error "DIR is required"
+		exit 1
+	fi
+	TARGETDIR=$(readlink -f "$TARGETDIR")
+	REMOTE="${arguments[1]}"
+	if [[ -z $REMOTE ]]; then
+		show_error "GIT REMOTE URL is required"
+		exit 1
+	fi
+	echo "$TARGETDIR $REMOTE"
+}
+
+function prompt() {
+	local REPL=true
+	local response=""
+
+	while $REPL; do
+		echo -n "[C]ontinue [E]xamine [A]bort? "
+		read response
+		case "$response" in 
+			[aA])
+				REPL=false
+				exit 0
+				;;
+			[eE])
+				git -c core.fileMode=false diff
+				;;
+			[cC])
+				REPL=false
+				;;
+		esac
+	done
+}
+
+function compare() {
+	local me=$(whoami)
+	local diffs=""
+	local output="$(mktemp)"
+	local response=""
+	local addedGit=false
+	local ignore
+
+	echo "Output in $output"
+	pushd $TARGETDIR
+	if [[ ! -d .git ]]; then
+		echo "Run git init on $TARGETDIR Later you may delete the .git dir if not needed."
+		echo "Now adding all files to git for first time"
+		addedGit=true
+		git init
+		ignore=$(git add . 2>&1) # capture and ignore output
+		ignore=$(git commit -m 'find_closest_tag initial commit of working dir' 2>&1) # capture and ignore output
+	fi
+	git remote add find_closest $REMOTE
+	echo -e "Fetching remote: find_closest\t$REMOTE"
+	ignore=$(git fetch --quiet find_closest --tags) # capture and ignore output
+
+	local skippingTags=false
+	if [[ -n $START_TAG ]]; then
+		skippingTags=true
+	fi
+
+	for tag in $(git tag -l); do
+		if [[ $tag == $START_TAG ]]; then
+			skippingTags=false
+		fi
+		if [[ $skippingTags == true ]]; then
+			echo "# Skipping tag $tag"
+			continue
+		fi
+
+		echo "# Comparing $tag"
+
+		diffs=$(git -c core.fileMode=false diff --shortstat $tag | tail -1 | sed -r 's/([0-9]+).*\s([0-9]+).*\s([0-9]+).*/\1\t\2\t\3/')
+
+		echo -e "$diffs\t$tag" >> $output
+		echo $diffs
+		if [[ $PROMPT == true ]]; then
+			prompt
+		fi
+	done
+
+	echo "-----------------------------------------------------------"
+	echo "Done"
+	echo "Output is in $output"
+	echo "To clean up after this script:"
+	if [[ $addedGit == true ]]; then
+		echo " Remove the .git directory we added to $TARGETDIR"
+		echo " Be sure before you do this!"
+	fi
+	echo "You may remove the remote we added"
+	echo "# git remote rm find_closest"
+	sort -n $output | less
+}
+
+function main() {
+	get_args "$@"
+	compare
+}
+
+main "$@"
