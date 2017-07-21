@@ -1,0 +1,111 @@
+#!/bin/bash
+#
+# Increase the current version (Major, Minor, or Patch)
+# based on last semver tag in current repo, and echo out the new version
+#
+# Example usage:
+#
+# 	git tag $(git bump-ver p)
+#
+# @author Luke Hudson
+#
+
+function semver_tags() {
+	git tag -l | grep -E '^v?[0-9.]+$' | sort -V
+}
+
+function latest_tag() {
+	semver_tags | tail -1
+}
+
+# Generic function to update a semver (n.n.n)
+#
+# Usage: bumpSemVer <M.m.p> <"M"|"m"|"p">
+#
+# Echoes the next relevant version after n.n.n, bumping the indicated field
+# Second parameter indicates which field to increment
+# 	"M" - Major version
+# 	"m" - minor version
+# 	"p" - patch version
+#
+function bumpSemVer() {
+	if [ $# -lt 1 ]; then
+		echo "bumpSemVer needs <tag> [<p|m|M>]"
+		exit 1;
+	fi
+
+	local ifs=$IFS
+	local tag="$1"
+	local mode="$2"
+
+	# Default to bumping patch version
+	if [ "x$mode" == "x" ]; then
+		mode="p"
+	fi
+
+	local idx=0
+	local columns=''
+	local newVersion=""
+
+	# split tag on '.''
+	IFS='.'
+	read -ra columns <<< "$tag"
+	IFS="$ifs"
+
+
+	# Check # columns matches expectation
+	local nColumns=${#columns[@]}
+	if [ $nColumns -ne 3 ]; then
+		echo "bumpSemVer expects a semver formatted as Major.minor.patch"
+		exit 1
+	fi
+
+	case $mode in
+		M)
+			idx=0
+			;;
+		m)
+			idx=1
+			;;
+		p)
+			idx=2
+			;;
+		*)
+			echo -e "bumpSemVer <tag> [M|m|p]\nM - Major\nm - minor\np - patch\n";
+			exit 1
+	esac
+
+	# fill in initial unchanged columns of semver
+	if [ $idx -gt 0 ]; then
+		local prevIdx=$(($idx - 1))
+		local col
+		for col in $(seq 0 $prevIdx); do
+			newVersion="${newVersion}${columns[col]}."
+		done
+	fi
+
+	# increment relevant column
+	local bumped=$(( ${columns[idx]} + 1 ))
+
+	newVersion="${newVersion}${bumped}."
+
+	# fill in remaining unchanged columns of semver
+	idx=$(( $idx + 1 ))
+	if [[ $idx < 3 ]]; then
+		for i in $(seq $idx $#columns); do
+			newVersion="${newVersion}0."
+		done
+	fi
+
+	echo ${newVersion%.} # remove final extra .
+}
+
+function main() {
+	local mode=$1
+	local tag=$(latest_tag)
+
+	bumpSemVer "$tag" "$mode"
+}
+
+main $@
+
