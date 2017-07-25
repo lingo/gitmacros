@@ -91,8 +91,8 @@ function bumpSemVer() {
 
 	# fill in remaining unchanged columns of semver
 	idx=$(( $idx + 1 ))
-	if [[ $idx < 3 ]]; then
-		for i in $(seq $idx $#columns); do
+	if [[ $idx < $nColumns ]]; then
+		for i in $(seq $idx $(($nColumns - 1)) ); do
 			newVersion="${newVersion}0."
 		done
 	fi
