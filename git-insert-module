@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# script-wide globals
+script="$0"
+root="$(readlink -f $(dirname "$script"))"
+tmpDir="/tmp/.gim"
+
+# globals set by parseArgs
+repo1=""
+repo2=""
+
+function moveToDirectory() {
+	local origin="$1"
+	local dest="repo1"
+
+	# create a copy of repo1
+	cd $tmpDir
+	git clone $origin $dest
+	cd $dest
+
+	# make repo1 look like it was always in a directory
+	git filter-branch --prune-empty --tree-filter "
+	if [[ ! -e $dest ]]; then
+		mkdir -p $dest
+		git ls-tree --name-only \$GIT_COMMIT \
+		   | xargs -I files mv files $dest
+	fi"
+}
+
+function insertModule() {
+	# create another copy
+	local origin="$1"
+	local moduleOrigin="$2"
+	local moduleBranch="master" # Default
+
+	cd $tmpDir
+	git clone $origin merged
+	cd merged
+
+	git remote add -f repo2 $moduleOrigin
+	git merge -s ours --no-commit repo2/$moduleBranch
+	git read-tree --prefix=repo2/ -u repo2/$moduleBranch
+	git commit -m "Merged repo2"
+	git pull -s subtree repo2 $moduleBranch
+}
+
+function parseArgs() {
+	local argv="$@"
+	repo1="$1"
+	repo2="$2"
+}
+
+function main() {
+	parseArgs $@
+	mkdir $tmpDir
+	cd $tmpDir
+	moveToDirectory $repo1 	
+	insertModule repo1 $repo2
+}
+
+main $@

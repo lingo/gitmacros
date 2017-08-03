@@ -1,33 +1,94 @@
-#!/bin/sh
+#!/bin/bash
+fileName=""
+gitFileName=""
+revision=""
+writeOnly=false
+outFileName=""
+quiet=false
 
-FN=$1
-if [ "x$FN" = "x" ]; then
-	echo "Usage: $0 <file> [<REV>]"
-	exit 1
-fi
+usage() {
+    echo "Usage: $0 [-w|--write-only] [-q|--quiet] <file> [<revision>] "
+    exit 1
+}
 
-REV=${2:-HEAD^}
+parseArgs() {
+    local args=$( getopt -a -n "git-chk-prv" -l "help,quiet,write-only" -o "qw" -- "$@" )
+    if [[ $? -ne 0 ]]; then
+        usage
+    fi
+    eval set -- "$args"
+    while true ; do
+        case "$1" in
+            -w|--write-only)
+                writeOnly=true;
+                shift;;
+            -q|--quiet)
+                quiet=true;
+                shift;;
+            --)
+                shift;
+                break;;
+            *)
+                echo "found param: $1";
+                usage;
+                break;;
+        esac
+    done
+    if [[ ${#@} -gt 2 ]]; then
+        echo "Found unexpected argument: '$3'"
+        usage;
+    fi
+    echo "Remaining args; $@"
 
-OUTFN="${REV}_${FN}"
-OUTFN=$(echo "$OUTFN" | sed -r 's/\W+/_/g')
+    fileName="$1"
+    if [ "x$fileName" = "x" ]; then
+        usage;
+    fi
 
-if [ "$3" = "-w" ]; then
-	git cat-file blob "${REV}:${FN}" > $FN
-	exit 0
-fi
+    revision="${2:-HEAD^}"
+}
 
-git cat-file blob "${REV}:${FN}" > "/tmp/$OUTFN"
-echo "$FN $REV $OUTFN"
+adjustPaths() {
+    local gitRoot=$(git rev-parse --show-toplevel)
+    fileName=$(realpath $fileName)
+    gitFileName=$(realpath --relative-to="$gitRoot" "$fileName")
+    outFileName="${revision}_${fileName}"
+    outFileName=$(echo "$outFileName" | sed -r 's/\W+/_/g')
+}
 
-if [ "$3" = "-q" ]; then
-	exec diff -q "/tmp/$OUTFN" "$FN"
-fi
+gitFetchFile() {
+    if [[ "$writeOnly" == true ]]; then
+        git cat-file blob "${revision}:${gitFileName}" > $fileName
+    fi
 
-TOOL="$(git config diff.tool)"
-if [ "x$GIT_EXTERNAL_DIFF" != "x" ]; then
-	TOOL="$GIT_EXTERNAL_DIFF"
-fi
-if [ "x$TOOL" = "x" ]; then
-	TOOL="meld"
-fi
-$TOOL "/tmp/$OUTFN" $FN
+    git cat-file blob "${revision}:${gitFileName}" > "/tmp/$outFileName"
+    # echo "$fileName $revision $outFileName"
+}
+
+getGitDiffTool() {
+    local diffTool="$(git config diff.tool)"
+    if [ "x$GIT_EXTERNAL_DIFF" != "x" ]; then
+        $diffTool="$GIT_EXTERNAL_DIFF"
+    fi
+    if [ "x$$diffTool" = "x" ]; then
+        $diffTool=$(which meld)
+    fi
+    echo $diffTool
+}
+
+compareFiles() {
+    local diffTool="$1"
+    if [ "$quiet" == true ]; then
+        exec diff -q "/tmp/$outFileName" "$fileName"
+    fi
+
+    "$diffTool" "/tmp/$outFileName" "$fileName"
+}
+
+
+set -e
+parseArgs "$@"
+adjustPaths
+gitFetchFile
+diffTool=$(getGitDiffTool)
+compareFiles $diffTool

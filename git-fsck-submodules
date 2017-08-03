@@ -1,0 +1,67 @@
+#!/bin/bash
+## Git-fsck-modules
+## Copyright (C) Luke Hudson
+##
+## This program is suppose to help troubleshoot problems with git
+## submodules. Usage:
+##     @#script.name [option] [<DIR>]
+##
+## DIR defaults to current directory
+##
+## Options:
+##     -h, --help              All client scripts have this by default,
+##                             it shows this double-hash documentation.
+##
+##     -o, --option            This option will get stored as option=yes.
+##                             Long version is mandatory, and can be
+##                             specified before or after short version.
+##
+##         --some-boolean      This will get stored as some_boolean=yes.
+##
+##         --some-value=VALUE  This will get stored as some_value=VALUE,
+##                             where VALUE is the actual value specified.
+##                             The equal sign is optional and can be
+##                             replaced with blank space. Short version
+##                             is not available in this format.
+ROOT=$(readlink -e $(dirname $0))
+DIR="."
+
+source $ROOT/easyoptions.sh
+
+function findGitFiles() {
+	find "$DIR" -name .git -type f
+}
+
+function findModuleDirs() {
+	$(which ls) -1 "$DIR/.git/modules/"
+}
+
+function findConfigModules() {
+	echo 'findConfigModules'
+	cat "$DIR/.git/config" | sed -rn '/^\[submodule/{s/.*"([^"]+)".*/\1/;N;s/\n//;s/\s*url\s*=\s*/ /;p}'
+}
+
+function findGitModules() {
+	echo 'findGitModules'
+
+	cat "$DIR/.gitmodules" | sed -rn '/^\[submodule/{s/.*"([^"]+)".*/\1/;N;s/\n//;s/\s*url\s*=\s*/ /;p}'
+}
+
+function getArgs() {
+	ADIR=$(readlink -e "$1")
+	if [[ -n $ADIR ]]; then
+		DIR=$ADIR
+	fi
+	DIR=$(readlink -e "$DIR")
+}
+
+function main() {
+	getArgs $@
+	echo "$DIR"
+	findGitFiles
+	findModuleDirs
+	findConfigModules
+	findGitModules
+}
+
+main $@

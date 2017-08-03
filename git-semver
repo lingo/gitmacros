@@ -1,0 +1,16 @@
+#!/bin/bash
+
+function semver_tags() {
+	git tag -l | grep -E '^v?[0-9.]+$' | sort -V
+}
+
+function latest_tag() {
+	semver_tags | tail -1
+}
+
+function main() {
+	latest_tag
+}
+
+main $@
+
