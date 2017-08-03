@@ -1,0 +1,13 @@
+#!/bin/bash
+
+doPatch=false
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    echo -e "Git revert permissions\nUndo all permission changes to files.  Files with content changes are left as-is."
+    echo "Usage: $0 [-f]"
+fi
+if [[ "$doPatch" == true ]]; then
+    git diff -p -R --no-color | grep -E "^(diff|(old|new) mode)" --color=never | git apply
+else
+    echo -e "Use -f to revert permission changes on the following files:\n"
+    git diff -p -R --no-color | grep -E "^(diff|(old|new) mode)" --color=never | sed -rn '/b\//s@.*b\/(.+)a/.*@\1@p'
+fi
