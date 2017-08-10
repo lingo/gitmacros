@@ -1,46 +1,123 @@
 #!/bin/bash
 # This allows you to keep a git repository store in your Dropbox folder.
 
-# Usage from within working directory:
-# git dropbox-init [dropbox-repo-name]
+# Usage from within working directory, see usage()
 #
-# If provided, dropbox-repo-name will be used instead of the default
+# If provided, repo-name will be used instead of the default
 # which would be e.g. for a working dir named 'source', source.git
 
-BASE_DIR=~/Dropbox/code # Change this to move your repository store
-
-if [ "$1" = '-h' -o "$1" = '--help' ]; then
-	echo "Usage: $0 [target_repo_name]"
-	exit 1
-fi
-
-target="$1"
-repo=$(basename $PWD)
+repoDir="$HOME/Dropbox/code" # Change this to move your repository store
 src="$PWD"
-pushd "$BASE_DIR" > /dev/null 
+target="" # Target directory name within $repoDir
+absoluteTarget="" # Target directory, fully qualified
+force=false
+push=true
+showCommands=false
 
-if [ "x$target" != "x" ]; then
-	if [ "${target%%.git}" == "$target" ]; then
-		target="${target}.git"
-	fi	
-	repo="$target"
-else
-	target="$repo"
-	if [ "${target%%.git}" == "$target" ]; then
-		target="${target}.git"
-	fi	
-fi
-
-git clone --bare "$src" "$target"
-if [ $? -ne 0 ]; then
-	echo "Failed to create remote repo -- may already exist by this name?"
-	popd > /dev/null
+usage() {
+	echo "Usage: $0 [-h|--help] [-d|--repo-dir <dir>] [-n|--repo-name <name>] [-N|--no-push] [-v|--verbose|--show-commands]"
+	echo
+	echo -e "\tDefault repo-dir is $HOME/Dropbox/code"
+	echo -e "\tDefault repo-name is $(basename $PWD).git"
 	exit 1
-fi
+}
 
-popd > /dev/null
+parseArgs() {
+    local args=$( getopt -a -n "git-dropbox-init" -l "help,repo-dir,repo-name,no-push,verbose,show-commands" -o "vhd:n:N" -- "$@" )
+    if [[ $? -ne 0 ]]; then
+        usage
+    fi
+    eval set -- "$args"
+    while true ; do
+        case "$1" in
+            -h|--help)
+                usage;
+                shift;;
+			-v|--show-commands|--verbose)
+				showCommands=true;
+				shift;;
+            -d|--repo-dir)
+                repoDir="$2"
+                shift 2;;
+            -n|--repo-name)
+                target="$2"
+                shift 2;;
+			-N|--no-push)
+				push=false
+				shift;;
+            --)
+                shift;
+                break;;
+            *)
+                usage;
+                break;;
+        esac
+    done
+    if [[ ${#@} -gt 2 ]]; then
+        echo "Found unexpected argument: '$3'"
+        usage;
+    fi
+}
 
-git remote add dropbox "${BASE_DIR}/${repo}"
-git fetch dropbox
-git branch --set-upstream-to master remotes/dropbox/master
-git push dropbox
+findTargetDir() {
+	# Make sure target repo dir name ends in .git and
+	# doesn't already exist
+	if [[ -z "$target" ]]; then
+		target="$(basename "$PWD").git"
+	fi
+#	if [[ "${target%%.git}" == "$target" ]]; then
+#		target="${target}.git"
+#	fi	
+	absoluteTarget=$(realpath "$repoDir/$target")
+	if [[ -d "$absoluteTarget" || -f "$absoluteTarget" ]]; then
+		if [[ "$force" == false ]]; then
+			echo "$absoluteTarget already exists, not overwriting"
+			exit 1
+		fi
+	fi
+}
+
+cloneToTarget() {
+	if [[ "$showCommands" == true ]]; then
+		echo git clone --bare "$src" "$absoluteTarget"
+	fi
+	git clone --bare "$src" "$absoluteTarget"
+	if [ $? -ne 0 ]; then
+		echo "Failed to create remote repo - error code $?"
+		exit 1
+	fi
+}
+
+getCurrentBranch() {
+	git name-rev --refs=refs/heads/\* "$@" | cut -d' ' -f2
+}
+
+setupRemote() {
+	if [[ "$showCommands" == true ]]; then
+		echo git remote add dropbox "$absoluteTarget"
+		echo git fetch dropbox
+	fi
+	git remote add dropbox "$absoluteTarget"
+	git fetch dropbox
+
+	local branch=$(getCurrentBranch)
+	branch=${branch:-master}
+
+	if [[ "$push" == false ]]; then	
+		echo "#  --no-push was specified.  You may want to run these manually"
+		echo git branch --set-upstream-to $branch remotes/dropbox/$branch
+		echo git push dropbox
+	else
+		if [[ "$showCommands" == true ]]; then
+			echo git branch --set-upstream-to $branch remotes/dropbox/$branch
+			echo git push dropbox
+		fi
+		git branch --set-upstream-to $branch remotes/dropbox/$branch
+		git push dropbox
+	fi
+}
+
+parseArgs "$@"
+findTargetDir
+cloneToTarget
+setupRemote
