@@ -31,6 +31,8 @@ These commands will respond to `-h` or `--help` with usage information.
     Try to ssh to the remote
  -	`git-status-tree`
     Show a one-line git status summary for all git repos in the given dir
+ - `git-cleanup-merges`
+    Clean leftover junk from old (failed) merges
 
 
 ## Usage Details ##
@@ -89,3 +91,7 @@ Finds latest semver tag, and bumps the
 If there are no semver tags, sets a non-zero exit code
  and echoes 1.0.0 on stdout, and a message on stderr
 ```
+
+### git cleanup-merges
+
+Just run it.  It will show junk files and ask if you want to delete them or not.
