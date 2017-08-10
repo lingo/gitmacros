@@ -17,6 +17,8 @@ These commands will respond to `-h` or `--help` with usage information.
     Show files which have only had their permissions changed, not content
  -	`git-root`
     Find the top-level path of this git repository
+ -  `git-undo-ws`
+    Attempt to undo changes in a file which are only whitespace changes
 
 ### Weirdos ###
  -  git-add-this-submodule
@@ -58,4 +60,18 @@ Usage: ./git-dropbox-init [-h|--help] [-d|--repo-dir <dir>]
 
 	--no-push  If not specified, then after initializing, we set default remote
                of current branch, and push it
+```
+
+### git undo-ws
+
+Git Undo Whitespace-only changes
+
+This will backup the given file to `FILENAME_gitundows.DATESTAMP`.
+
+Then this command will try to patch the file so that only non-whitespace
+changes remain.  Sometimes this patching fails, in which case a .rej file will
+be created, the user is warned and the location of the backup will be shown
+
+```
+Usage: ./git-undo-ws <FILENAME>
 ```

@@ -40,7 +40,7 @@ function gitUndoWhitespace() {
 }
 
 function setup() {
-	if [ "x$1" = "x" ]; then
+	if [[ "x$1" = "x" || "$1" == "-h" || "$1" == "--help" ]]; then
 		echo -e "Git Undo Whitespace-only changes\nUsage: $0 <FILENAME>"
 		exit 1
 	fi
