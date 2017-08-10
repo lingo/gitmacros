@@ -1,20 +1,20 @@
-alias.lg=log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative
-alias.cmp=!/home/lucas/bin/git_check_prv
-alias.sma=submodule add
-alias.smdir=!f() { echo "SM $1"; cd "$1"; url=$(git remote -v| sed -rn '/^(origin|dev).*fetch/s/^\S+\s+(\S+).*$/\1/p'); echo "$url"; cd -; git submodule add "$url" "$1"; }; f
-alias.gap=add --patch
-alias.rv=remote -v
-alias.ap=add --patch
-alias.dc=diff --cached
-alias.b=branch
-alias.subup=submodule update --init --recursive
-alias.slog=log --pretty=oneline
-alias.resetperms=!git diff -p -R --no-color | grep -E "^(diff|(old|new) mode)" --color=never | git apply
-alias.root=rev-parse --show-toplevel
-alias.feature=flow feature
-alias.bugfix=flow bugfix
-alias.hotfix=flow hotfix
-alias.last-ver=describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' production
-alias.lastver=describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' production
-alias.diffci=!bash -c "git slog ${1:-HEAD}..${2:-HEAD}"
-alias.logdiff=!bash -c "git slog ${1:-HEAD}..${2:-HEAD}"
+#!/bin/bash
+
+git config --global alias.lg=log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative
+git config --global alias.sma=submodule add
+git config --global alias.gap=add --patch
+git config --global alias.rv=remote -v
+git config --global alias.ap=add --patch
+git config --global alias.dc=diff --cached
+git config --global alias.b=branch
+git config --global alias.subup=submodule update --init --recursive
+git config --global alias.slog=log --pretty=oneline
+git config --global alias.resetperms=!git diff -p -R --no-color | grep -E "^(diff|(old|new) mode)" --color=never | git apply
+git config --global alias.root=rev-parse --show-toplevel
+git config --global alias.feature=flow feature
+git config --global alias.bugfix=flow bugfix
+git config --global alias.hotfix=flow hotfix
+git config --global alias.last-ver=describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' production
+git config --global alias.lastver=describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' production
+git config --global alias.diffci=!bash -c "git slog ${1:-HEAD}..${2:-HEAD}"
+git config --global alias.logdiff=!bash -c "git slog ${1:-HEAD}..${2:-HEAD}"
