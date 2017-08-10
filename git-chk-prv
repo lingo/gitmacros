@@ -9,7 +9,7 @@ quiet=false
 usage() {
     echo "Usage: $0 [-w|--write-only] [-q|--quiet] <file> [<revision>] "
 	echo
-	echo -e "\t<revision> defaults to HEAD^"
+	echo -e "\t<revision> defaults to HEAD^, i.e. previous version"
 	echo -e "\t--write-only will just overwrite the current file with the"
 	echo -e "\t\tversion from <revision>, after prompting."
 	echo -e "\t--quiet will use 'diff -q' instead of your git difftool"
