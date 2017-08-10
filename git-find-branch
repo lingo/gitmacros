@@ -1,0 +1,19 @@
+#!/bin/bash
+
+function getBranch() {
+	local ref=$(git name-rev --refs=refs/heads/\* "$@" | cut -d' ' -f2 )
+
+	if [[ -n "$ref" || "$ref" == "undefined" ]]; then
+		echo $(git name-rev "$@" | cut -d' ' -f2)
+		return 1
+	else
+		echo $ref
+		return 0
+	fi
+}
+
+if [[ $# -eq 0 ]]; then
+	getBranch HEAD
+else
+	getBranch "$@"
+fi
