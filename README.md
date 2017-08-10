@@ -41,7 +41,8 @@ Usage: ./git-chk-prv [-w|--write-only] [-q|--quiet] <file> [<revision>]
 	--quiet will use 'diff -q' instead of your git difftool
 ```
 
-Compare current file version with (by default) HEAD version, or with version in commit/branch/tag provided.  This compare is done using **meld**.
+Compare current file version with (by default) HEAD version, or with version in
+commit/branch/tag provided.  This compare is done using **meld**.
 
 ###  git root
 
@@ -49,10 +50,12 @@ Find the root (directory containing .git/) of this repository
 
 ### git dropbox-init
 ```
-Usage: ./git-dropbox-init [-h|--help] [-d|--repo-dir <dir>] [-n|--repo-name <name>] [-N|--no-push] [-v|--verbose|--show-commands]
+Usage: ./git-dropbox-init [-h|--help] [-d|--repo-dir <dir>] 
+  [-n|--repo-name <name>] [-N|--no-push] [-v|--verbose|--show-commands]
 
 	Default repo-dir is $HOME/Dropbox/code
 	Default repo-name is $(basename $PWD).git
 
-	--no-push  If not specified, then after initializing, we set default remote of current branch, and push it
+	--no-push  If not specified, then after initializing, we set default remote
+               of current branch, and push it
 ```
