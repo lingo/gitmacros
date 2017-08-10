@@ -21,6 +21,8 @@ These commands will respond to `-h` or `--help` with usage information.
     Attempt to undo changes in a file which are only whitespace changes
  - `git-bump-ver`
     Bump a semver tag to next Major,minor, or patch version
+ - `git-semver`
+   Show the latest semver-style tag in the repo
 
 ### Weirdos ###
  -  git-add-this-submodule

@@ -9,7 +9,11 @@ function latest_tag() {
 }
 
 function main() {
-	latest_tag
+	local tag=$(latest_tag)
+	if [[ "x$tag" == "x" ]]; then
+		( >&2 echo "No semver tags found")
+		exit 1
+	fi
 }
 
 main $@
