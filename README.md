@@ -7,6 +7,7 @@ Here are a number of commands which I keep in my $PATH and which can then be cal
 ## Contents ##
 
 ### Everyday tools ###
+These commands will respond to `-h` or `--help` with usage information.
 
  -  `git-chk-prv <file> [<revision>]`
     Compare a file using difftool against a previous version
