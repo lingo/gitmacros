@@ -42,7 +42,6 @@ parseArgs() {
         echo "Found unexpected argument: '$3'"
         usage;
     fi
-    echo "Remaining args; $@"
 
     fileName="$1"
     if [ "x$fileName" = "x" ]; then
