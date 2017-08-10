@@ -1,43 +1,49 @@
 #!/bin/bash
 
+REMOTE=""
+BRANCH="dev"
+LIST=""
+
 function usage() {
-	echo "Usage: $0 [-l] <remote> <branch>"
+	echo "Usage: $0 [-s] <remote> <branch>"
+	echo "Quick-and-dirty deployment:"
+	echo
+	echo "SSH to remote, and then within remote repo"
+	echo " fetch and rebase branch"
+	echo
+	echo "-s = simulate, dry-run"
 	exit 1
 }
 
-REMOTE="origin"
-BRANCH="dev"
-LIST=""
-RARG=""
+parseOpts() {
+	while getopts "shr:" opt; do
+		case $opt in
+			h) usage  ;;
+			s) LIST=1 ;;
+			r) REMOTE="$OPTARG" ;;
+			*) usage ;;
+		esac
+	done
+	shift $(( $OPTIND - 1 ))
 
-while getopts "lhr:" opt; do
-	case $opt in
-		h) usage  ;;
-		l) LIST=1 ;;
-		r) RARG="$OPTARG" ;;
-		*) usage ;;
-	esac
-done
-shift $(( $OPTIND - 1 ))
+	REMOTE="${REMOTE:-$1}"
+	REMOTE="${REMOTE:-origin}"
+	URL=$(git config "remote.$REMOTE.url")
+	HOST=$(echo -n $URL | sed -r 's@.+://([^/:]+).+@\1@')
+	RPATH=$(echo -n $URL | sed -r 's@.+://[^/:]+(.+)$@\1@;s/\.git$//')
+}
 
-RARG="${RARG:-$1}"
+main() {
+	[ -z "$LIST" ] && echo "SSH to $HOST"
+	[ -z "$LIST" ] && echo "And CD to $RPATH"
 
-REMOTE="${RARG:-$REMOTE}"
-if [ -z "$REMOTE" ]; then
-	REMOTE="origin"
-fi
+	if [ -n "$LIST" ]; then
+		echo "ssh $HOST:$RPATH"
+	else
+		ssh -t "$HOST" "cd \"$RPATH\"; git rebase $BRANCH || bash";
+		echo "Deployed by rebase to $BRANCH"
+	fi
+}
 
-URL=$(git config "remote.$REMOTE.url")
-
-HOST=$(echo -n $URL | sed -r 's@.+://([^/:]+).+@\1@')
-RPATH=$(echo -n $URL | sed -r 's@.+://[^/:]+(.+)$@\1@;s/\.git$//')
-
-[ -z "$LIST" ] && echo "SSH to $HOST"
-[ -z "$LIST" ] && echo "And CD to $RPATH"
-
-if [ -n "$LIST" ]; then
-	echo "ssh $HOST:$RPATH"
-else
-	ssh -t "$HOST" "cd \"$RPATH\"; git rebase $BRANCH || bash";
-	echo "Deployed by rebase to $BRANCH"
-fi
+parseOpts "$@"
+main 
