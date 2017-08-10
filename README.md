@@ -19,6 +19,8 @@ These commands will respond to `-h` or `--help` with usage information.
     Find the top-level path of this git repository
  -  `git-undo-ws`
     Attempt to undo changes in a file which are only whitespace changes
+ - `git-bump-ver`
+    Bump a semver tag to next Major,minor, or patch version
 
 ### Weirdos ###
  -  git-add-this-submodule
@@ -74,4 +76,16 @@ be created, the user is warned and the location of the backup will be shown
 
 ```
 Usage: ./git-undo-ws <FILENAME>
+```
+
+### git bump-ver
+
+```
+Usage: ./git-bump-ver <M|m|p>
+
+Finds latest semver tag, and bumps the
+ [M]ajor, or [m]inor, or [p]atch version
+ and echoes the new version
+If there are no semver tags, sets a non-zero exit code
+ and echoes 1.0.0 on stdout, and a message on stderr
 ```

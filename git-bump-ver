@@ -9,6 +9,7 @@
 #
 # @author Luke Hudson
 #
+mode="p"
 
 function semver_tags() {
 	git tag -l | grep -E '^v?[0-9.]+$' | sort -V
@@ -100,12 +101,34 @@ function bumpSemVer() {
 	echo ${newVersion%.} # remove final extra .
 }
 
+function usage() {
+	echo "Usage: $0 <M|m|p>"
+	echo "Finds latest semver tag, and bumps the"
+	echo " [M]ajor, or [m]inor, or [p]atch version"
+	echo " and echoes the new version"
+	echo "If there are no semver tags, sets a non-zero exit code"
+	echo " and echoes 1.0.0 on stdout, and a message on stderr"
+	exit 1
+}
+
+function parseOpts() {
+	if [[ "$1" == "-h" || "$1" == "--help" || -z "$1" ]]; then
+		usage;
+	fi
+	mode="$1"
+}
+
 function main() {
-	local mode=$1
 	local tag=$(latest_tag)
+	if [[ "x$tag" == "x" ]]; then
+		( >&2 echo "** There are no semver tags in this repository" )
+		echo "1.0.0"
+		exit 1
+	fi
 
 	bumpSemVer "$tag" "$mode"
 }
 
-main $@
+parseOpts "$@"
+main
 
