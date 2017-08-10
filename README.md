@@ -22,7 +22,9 @@ These commands will respond to `-h` or `--help` with usage information.
  - `git-bump-ver`
     Bump a semver tag to next Major,minor, or patch version
  - `git-semver`
-   Show the latest semver-style tag in the repo
+    Show the latest semver-style tag in the repo
+ - `git-find-branch`
+   Try to show the branch name for a given commit or current branch
 
 ### Weirdos ###
  -  git-add-this-submodule
