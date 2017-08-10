@@ -8,11 +8,16 @@ quiet=false
 
 usage() {
     echo "Usage: $0 [-w|--write-only] [-q|--quiet] <file> [<revision>] "
+	echo
+	echo -e "\t<revision> defaults to HEAD^"
+	echo -e "\t--write-only will just overwrite the current file with the"
+	echo -e "\t\tversion from <revision>, after prompting."
+	echo -e "\t--quiet will use 'diff -q' instead of your git difftool"
     exit 1
 }
 
 parseArgs() {
-    local args=$( getopt -a -n "git-chk-prv" -l "help,quiet,write-only" -o "qw" -- "$@" )
+    local args=$( getopt -a -n "git-chk-prv" -l "help,quiet,write-only" -o "qwh" -- "$@" )
     if [[ $? -ne 0 ]]; then
         usage
     fi
@@ -29,7 +34,6 @@ parseArgs() {
                 shift;
                 break;;
             *)
-                echo "found param: $1";
                 usage;
                 break;;
         esac
@@ -58,6 +62,8 @@ adjustPaths() {
 
 gitFetchFile() {
     if [[ "$writeOnly" == true ]]; then
+		echo "Really overwrite $fileName? (Ctrl-C to cancel)"
+		read
         git cat-file blob "${revision}:${gitFileName}" > $fileName
     fi
 
