@@ -21,9 +21,12 @@ These commands will respond to `-h` or `--help` with usage information.
 ### Weirdos ###
  -  git-add-this-submodule
  -  git-deploy
- -  git_filter_others.sh
- -	git-ssh
- -	git-status-tree
+ -  `git_filter_others.sh`
+	Example of filtering only commits by given author
+ -	`git-ssh`
+    Try to ssh to the remote
+ -	`git-status-tree`
+    Show a one-line git status summary for all git repos in the given dir
 
 
 ## Usage Details ##
