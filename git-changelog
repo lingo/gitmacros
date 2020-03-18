@@ -1,0 +1,143 @@
+#!/bin/bash
+
+set -o pipefail
+set -o nounset
+
+HEADING_LEVEL=1
+SHOW_DATES=false
+TITLE="Changelog"
+
+usage() {
+	local prog=$(basename "$0")
+	cat <<-END
+	$prog
+
+	USAGE
+
+	$prog [OPTIONS] [COMMIT]
+
+	OPTIONS
+
+	-h, --help                   This help
+
+	-H, --heading-level LEVEL    Set markdown heading level to LEVEL
+	                             LEVEL is 1 by default, ie. ##
+
+	-d, --show-dates             If this is set, dates are added to
+	                             each tag
+
+	-t, --title TITLE            Show title of TITLE at top
+	                             (heading level will be increased
+	                             by 1 after title)
+	                             TITLE is "Changelog" by default, use
+	                             empty title to omit, e.g. -t ""
+
+	COMMIT is a git hash/branch/tag.
+	If COMMIT is empty, it defaults to HEAD
+END
+	exit 2
+}
+
+parseCLI() {
+	local opts
+
+	if ! opts=$(
+		getopt \
+		-q \
+		-n "$(basename "$0")" \
+		-o hH:dt: \
+		--long help,heading-level:,heading:,show-dates,title: \
+		-- "$@"
+	); then
+		usage
+	fi
+
+	eval set -- "$opts"
+
+	while true; do
+			case "$1" in
+					-h|--help)   usage;;
+					-d|--show-dates)
+						SHOW_DATES=true
+						shift;;
+					-H|--heading-level|--heading)
+						HEADING_LEVEL="$2";
+						shift 2;;
+					-t|--title)
+						TITLE="$2"
+						shift 2;;
+					--)
+						shift;
+						break;;
+					*)
+						echo "Bad argument '$1'" >&2
+						usage;
+			esac
+	done
+}
+
+getCurrentTag() {
+	git describe --tags --abbrev=0 "${1:-HEAD}"
+}
+
+getPreviousTag() {
+	if [[ $# -lt 1 ]]; then
+		echo "getPreviousTag given no current tag" >&2
+		exit 1;
+	fi
+	local current="$1"
+	git tag -l --sort=-v:refname | grep -A1 -F "$current" | tail -1
+}
+
+makeHeading() {
+	local content="$1"
+	local level="${2:-HEADING_LEVEL}"
+	local i
+	local heading=""
+
+	for (( i = 0; i < $level; i++ )); do
+		heading="${heading}#"
+	done
+	echo "$heading $content"
+}
+
+getTagDate() {
+	git log -n1 --pretty="format:%cd" --date="format:%e %B %Y" "$1"
+}
+
+main() {
+	parseCLI "$@"
+
+	local currentTag=$(getCurrentTag);
+
+	if [[ $? -ne 0 || -z "$currentTag" ]]; then
+		echo "No current tag, cannot list changelog" >&2
+		exit 1
+	fi
+
+	local previousTag=$(getPreviousTag "$currentTag")
+
+	if [[ $? -ne 0 || -z "$previousTag" ]]; then
+		echo "No previous tags, cannot list changelog" >&2
+		exit 1
+	fi
+
+	if [[ -n $TITLE ]]; then
+		makeHeading "$TITLE"; echo
+		HEADING_LEVEL=$((HEADING_LEVEL + 1))
+	fi
+
+	while [[ -n $previousTag && $previousTag != $currentTag ]]; do
+		local heading="$currentTag"
+		if $SHOW_DATES; then
+			 heading="$heading -- $(getTagDate "$currentTag")"
+		fi
+		makeHeading "$heading"; echo
+		git log --no-decorate --pretty="format:- %s" "${previousTag}..${currentTag}" | grep -v 'Bump version'
+		echo
+		currentTag="$previousTag"
+		previousTag=$(getPreviousTag "$currentTag")
+	done
+}
+
+main "$@"
