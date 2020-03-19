@@ -6,6 +6,13 @@ set -o nounset
 HEADING_LEVEL=1
 SHOW_DATES=false
 TITLE="Changelog"
+GREP=""
+
+COMMIT=""
+USE_SHORTLOG=false
+PRETTY_FORMAT="- %s"
+DATE_FORMAT="%e %B %Y"
+readonly GIT_ARGS="--no-decorate"
 
 usage() {
 	local prog=$(basename "$0")
@@ -14,26 +21,45 @@ usage() {
 
 	USAGE
 
-	$prog [OPTIONS] [COMMIT]
+	  $prog [OPTIONS] [COMMIT]
+
+	PARAMETERS
+
+	  COMMIT is a git hash/branch/tag.
+	  If COMMIT is empty, it defaults to HEAD
 
 	OPTIONS
 
-	-h, --help                   This help
+	  -h, --help                   This help
 
-	-H, --heading-level LEVEL    Set markdown heading level to LEVEL
-	                             LEVEL is 1 by default, ie. ##
+	  -H LEVEL
+	  --heading LEVEL
+	  --heading-level LEVEL        Set markdown heading level to LEVEL
+	                               LEVEL is 1 by default, ie. ##
+	  -d[FORMAT]
+	  --show-dates[=FORMAT]        If this is set, dates are added to
+	                               each tag. Optional format is for strftime or
+	                               git log. ie 'default' 'unix'
+	                               Default format is strftime '%e %B %Y'
+	  -t TITLE
+	  --title TITLE                Show title of TITLE at top
+	                               (heading level will be increased
+	                               by 1 after title)
+	                               TITLE is "Changelog" by default, use
+	                               -T to omit
+	  -T
+	  --no-title                   Suppress title
 
-	-d, --show-dates             If this is set, dates are added to
-	                             each tag
+	  -f PATTERN
+	  -g PATTERN
+	  --grep PATTERN               filter commits only showing those matching PATTERN
 
-	-t, --title TITLE            Show title of TITLE at top
-	                             (heading level will be increased
-	                             by 1 after title)
-	                             TITLE is "Changelog" by default, use
-	                             empty title to omit, e.g. -t ""
+	  -F FORMAT
+	  --format FORMAT              Format for git log lines, default is "- %s"
 
-	COMMIT is a git hash/branch/tag.
-	If COMMIT is empty, it defaults to HEAD
+	  -G
+	  --group-by-author            Output commits grouped per author
+
 END
 	exit 2
 }
@@ -45,8 +71,8 @@ parseCLI() {
 		getopt \
 		-q \
 		-n "$(basename "$0")" \
-		-o hH:dt: \
-		--long help,heading-level:,heading:,show-dates,title: \
+		-o hH:d::t:f:g:F:TG \
+		--long help,heading-level:,heading:,show-dates::,title:,grep:,filter:,format:,no-title,group-by-author \
 		-- "$@"
 	); then
 		usage
@@ -59,12 +85,28 @@ parseCLI() {
 					-h|--help)   usage;;
 					-d|--show-dates)
 						SHOW_DATES=true
+
+						if [[ -n $2 ]]; then
+							DATE_FORMAT="$2"
+						fi
+						shift 2;;
+					-G|--group-by-author)
+						USE_SHORTLOG=true
 						shift;;
 					-H|--heading-level|--heading)
 						HEADING_LEVEL="$2";
 						shift 2;;
 					-t|--title)
 						TITLE="$2"
+						shift 2;;
+					-T|--no-title)
+						TITLE=""
+						shift;;
+					-f|-g|--grep|--filter)
+						GREP="$2"
+						shift 2;;
+					-F|--format)
+						PRETTY_FORMAT="$2"
 						shift 2;;
 					--)
 						shift;
@@ -74,10 +116,12 @@ parseCLI() {
 						usage;
 			esac
 	done
+
+	COMMIT="${1:-HEAD}"
 }
 
 getCurrentTag() {
-	git describe --tags --abbrev=0 "${1:-HEAD}"
+	git describe --tags --abbrev=0 "${1:-${COMMIT}}"
 }
 
 getPreviousTag() {
@@ -102,7 +146,39 @@ makeHeading() {
 }
 
 getTagDate() {
-	git log -n1 --pretty="format:%cd" --date="format:%e %B %Y" "$1"
+	git log -n1 --pretty="format:%cd" --date="format:${DATE_FORMAT}" "$1"
+}
+
+getCommits() {
+	local previousTag="$1"
+	local currentTag="$2"
+	local grep="$3"
+
+	if $USE_SHORTLOG; then
+		if [[ -z "$grep" ]]; then
+			git shortlog -n -e -w76,3,4 --format="${PRETTY_FORMAT}" "${previousTag}..${currentTag}" \
+			| sed -r 's/^([^ \t])/- \0/;s/^\s{3}/    /'
+		else
+			git shortlog -n -e -w76,3,4 --format="${PRETTY_FORMAT}" "${previousTag}..${currentTag}" \
+			| grep -E "$grep"
+		fi
+		return
+	fi
+
+	if [[ -z "$grep" ]]; then
+		git log $GIT_ARGS \
+			--date="format:${DATE_FORMAT}" \
+			--pretty="format:${PRETTY_FORMAT}" \
+			"${previousTag}..${currentTag}" \
+			| grep -vE 'Bump\s+(\w+\s+)?version'
+		return;
+	fi
+
+	git log $GIT_ARGS \
+		--date="format:${DATE_FORMAT}" \
+		--pretty="format:${PRETTY_FORMAT}" \
+		"${previousTag}..${currentTag}" \
+		| grep -E "$grep"
 }
 
 main() {
@@ -127,17 +203,36 @@ main() {
 		HEADING_LEVEL=$((HEADING_LEVEL + 1))
 	fi
 
+	local heading
+
 	while [[ -n $previousTag && $previousTag != $currentTag ]]; do
-		local heading="$currentTag"
+		heading="$currentTag"
+
 		if $SHOW_DATES; then
 			 heading="$heading -- $(getTagDate "$currentTag")"
 		fi
-		makeHeading "$heading"; echo
-		git log --no-decorate --pretty="format:- %s" "${previousTag}..${currentTag}" | grep -v 'Bump version'
-		echo
+
+		local commits=""
+
+		commits=$(
+			getCommits "$previousTag" "$currentTag" "$GREP"
+		)
+		if [[ -n "$commits" ]]; then
+			makeHeading "$heading"; echo
+			cat <<<$commits
+			echo
+		fi
 		currentTag="$previousTag"
 		previousTag=$(getPreviousTag "$currentTag")
 	done
 }
 
-main "$@"
+mainPaged() {
+	if [[ -p /dev/stdout ]]; then
+		main "$@"
+	else
+		main "$@" | less
+	fi
+}
+
+mainPaged "$@"
