@@ -1,12 +1,26 @@
 #!/bin/bash
 
+tool="find"
+args="-regex "
+regex='\(_\(BASE\|LOCAL\|REMOTE\|BACKUP\)_\)\|\(\.orig$\)\|\(~HEAD$\)'
+print0Arg="-print0"
+
+if which ag > /dev/null; then
+	tool="$(which ag)"
+	regex=$(echo $regex | sed -r 's/\\([()|])/\1/g')
+	print0Arg="--print0"
+	args="-g "
+fi
+
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 	echo "Usage: $0"
 	echo "Finds leftover junk from merges and prompts for deletion"
 	exit 1
 fi
 
-files=$(find . -regex '\(.*\.\(BASE\|LOCAL\|REMOTE\|BACKUP\)\..*\)\|\(.*\.orig$\)\|\(.*~HEAD$\)' | sort)
+#echo $tool $args "'$regex'"
+
+files=$("$tool" . $args "$regex" | sort)
 for f in $files; do
 	echo $f
 done
@@ -14,7 +28,7 @@ if [[ "x$files" != "x" ]]; then
 	echo -ne "\n\nDelete these? [y|N]: "
 	read x
 	if [[ $x == 'y' ]]; then
-		find . -regex '\(.*\.\(BASE\|LOCAL\|REMOTE\|BACKUP\)\..*\)\|\(.*\.orig$\)\|\(.*~HEAD$\)' -delete
+		"$tool" . $args "$regex" $print0Arg | xargs -0 rm
 	fi
 else
 	echo "No junk found."
