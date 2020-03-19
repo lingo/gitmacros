@@ -112,8 +112,7 @@ setupRemote() {
 			echo git branch --set-upstream-to $branch remotes/dropbox/$branch
 			echo git push dropbox
 		fi
-		git branch --set-upstream-to $branch remotes/dropbox/$branch
-		git push dropbox
+		git push --set-upstream dropbox master
 	fi
 }
 
