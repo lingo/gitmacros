@@ -72,8 +72,8 @@ function bumpSemVer() {
 			idx=2
 			;;
 		*)
-			echo -e "bumpSemVer <tag> [M|m|p]\nM - Major\nm - minor\np - patch\n";
-			exit 1
+			usage
+			;;
 	esac
 
 	# fill in initial unchanged columns of semver
@@ -102,12 +102,36 @@ function bumpSemVer() {
 }
 
 function usage() {
-	echo "Usage: $0 <M|m|p>"
-	echo "Finds latest semver tag, and bumps the"
-	echo " [M]ajor, or [m]inor, or [p]atch version"
-	echo " and echoes the new version"
-	echo "If there are no semver tags, sets a non-zero exit code"
-	echo " and echoes 1.0.0 on stdout, and a message on stderr"
+	cat <<END
+NAME
+
+  git-bump-ver - Output new semver tag for current repo
+
+SYNPOSIS
+
+  git bump-ver [<PART>]
+
+  PART = <M|m|p>
+
+DESCRIPTION
+
+  Finds the most recent semver tag in the current repository and increments the
+  major, minor or patch version.
+
+  PART may be
+  - M to increment the major version
+  - m to increment the minor version
+  - p to increment the patch version (this is the default)
+
+  Exit status:
+  	If there are no semver tags, sets a non-zero exit code
+  	and echoes 1.0.0 on stdout, and a message on stderr
+
+OUTPUT
+
+  The new version will be output
+
+END
 	exit 1
 }
 
@@ -120,8 +144,9 @@ function parseOpts() {
 
 function main() {
 	local tag=$(latest_tag)
+
 	if [[ "x$tag" == "x" ]]; then
-		( >&2 echo "** There are no semver tags in this repository" )
+		echo "** There are no semver tags in this repository" >&2
 		echo "1.0.0"
 		exit 1
 	fi
