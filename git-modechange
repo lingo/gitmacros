@@ -10,8 +10,8 @@ fi
 FILES=$(git diff --numstat | awk '{ if (($1 == "-" && $2 == "-") || ($1 == "0" && $2 == "0")) print $3 }')
 
 if [ "x$FILES" != "x" ]; then
-	echo "The following files have had their modes changed:"
-	git diff --numstat | awk '{ if (($1 == "-" && $2 == "-") || ($1 == "0" && $2 == "0")) print $3 }' 
+	echo "The following files have had their modes changed, but not their content:"
+	git diff --numstat | awk '{ if (($1 == "-" && $2 == "-") || ($1 == "0" && $2 == "0")) print $3 }'
 	echo -e -n "\n\nRevert these files to HEAD version (y/N) ? "
 	read X
 	if [ "$X" = "y" ]; then
