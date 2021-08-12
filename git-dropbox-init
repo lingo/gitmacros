@@ -13,6 +13,7 @@ absoluteTarget="" # Target directory, fully qualified
 force=false
 push=true
 showCommands=false
+defaultBranch="$(git config init.defaultbranch)"
 
 usage() {
 	echo "Usage: $0 [-h|--help] [-d|--repo-dir <dir>] [-n|--repo-name <name>] [-N|--no-push] [-v|--verbose|--show-commands]"
@@ -101,7 +102,7 @@ setupRemote() {
 	git fetch dropbox
 
 	local branch=$(getCurrentBranch)
-	branch=${branch:-master}
+	branch=${branch:-$defaultBranch}
 
 	if [[ "$push" == false ]]; then	
 		echo "#  --no-push was specified.  You may want to run these manually"
@@ -112,7 +113,7 @@ setupRemote() {
 			echo git branch --set-upstream-to $branch remotes/dropbox/$branch
 			echo git push dropbox
 		fi
-		git push --set-upstream dropbox master
+		git push --set-upstream dropbox $defaultBranch
 	fi
 }
 
