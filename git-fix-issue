@@ -1,0 +1,127 @@
+#!/usr/bin/env node
+const { spawnSync } = require('child_process');
+const { writeFileSync, unlinkSync } = require('fs');
+
+function run(command, args = [], options = {}) {
+  const cp = spawnSync(command, args, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    ...options,
+  });
+
+  if (cp.error) {
+    throw cp.error;
+  }
+
+  return cp.output;
+}
+
+function usage(program) {
+  process.stderr.write(`Usage: ${program} "https://gitlab.com/.../-/issues/..."\n(or have issue link in clipboard)\n`);
+  process.exit(1);
+}
+
+// e.g. https://gitlab.com/marama-labs-software/marama-frontend/-/issues/142
+function getFromClipboard() {
+  const output = run('xclip', ['-o', '-selection', 'clipboard']);
+  return output.filter(Boolean).join('');
+}
+
+function saveToClipboard(data) {
+  const cp = spawnSync('xclip', ['-i', '-selection', 'clipboard'], {
+    input: data,
+    encoding: 'utf8',
+    stdio: ['pipe', 'ignore', 'ignore'],
+  });
+
+  if (cp.status !== 0) {
+    throw cp.error || new Error(`xclip -i failed, status ${cp.status}`);
+  }
+}
+
+function getLink(args) {
+  let [, , link] = args;
+
+  if (!link) {
+    link = getFromClipboard();
+  }
+
+  return link;
+}
+
+function getCommitMessage(link) {
+  if (link.match(/^fix.*#\d+/)) {
+    return link;
+  }
+
+  if (!link.match(/^\s*https:\/\/gitlab.com.+issues\/\d+\s*$/)) {
+    throw new Error('Bad link');
+  }
+
+  const [, issue] = link.match(/https:\/\/gitlab.com\/.+\/issues\/(\d+)/);
+  if (!issue) {
+    process.stderr.write(`Malformed issue link: ${link}\n`);
+    process.exit(1);
+  }
+
+  return `fix: CHANGEME #${issue}\n\nFixes: #${issue}\nIssue-Link: ${link}\n`;
+}
+
+function hasStagedFiles() {
+  const output = run('git', ['diff', '--name-only', '--cached']);
+  return output.filter(Boolean).length > 0;
+}
+
+function gitRoot() {
+  const output = run('git', ['rev-parse', '--show-toplevel']);
+  return output.filter(Boolean).join('').trim();
+}
+
+function runGitCommit(message) {
+  const commitMessageFile = `${gitRoot()}/.git/GIT_FIX_ISSUE_COMMIT_MESSAGE`;
+  try {
+    writeFileSync(commitMessageFile, message, { encoding: 'utf-8' });
+    const output = run('git', ['commit', '-F', commitMessageFile, '-e'], { stdio: 'inherit' });
+    return output.filter(Boolean).map((x) => x.trim());
+  } finally {
+    try {
+      unlinkSync(commitMessageFile);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function main(args) {
+  const [, program, arg] = args;
+
+  if (arg && arg.match(/^--?h(elp)?/)) {
+    usage(program);
+  }
+
+  const link = getLink(args);
+
+  if (!link) {
+    usage(program);
+  }
+
+  let commitMessage;
+
+  try {
+    commitMessage = getCommitMessage(link);
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    usage(program);
+  }
+
+  if (process.stdout.isTTY) {
+    process.stdout.write(commitMessage);
+    if (hasStagedFiles()) {
+      runGitCommit(commitMessage);
+    }
+  } else {
+    saveToClipboard(commitMessage);
+  }
+}
+
+main(process.argv);
