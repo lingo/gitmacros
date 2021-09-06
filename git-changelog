@@ -8,10 +8,12 @@ SHOW_DATES=false
 TITLE="Changelog"
 GREP=""
 
-COMMIT=""
+COMMIT="HEAD"
+SINCE=""
 USE_SHORTLOG=false
-PRETTY_FORMAT="- %s"
+PRETTY_FORMAT="%s"
 DATE_FORMAT="%e %B %Y"
+HEADING_CHAR="#"
 readonly GIT_ARGS="--no-decorate"
 
 usage() {
@@ -32,23 +34,20 @@ usage() {
 
 	  -h, --help                   This help
 
-	  -H LEVEL
-	  --heading LEVEL
-	  --heading-level LEVEL        Set markdown heading level to LEVEL
-	                               LEVEL is 1 by default, ie. ##
 	  -d[FORMAT]
 	  --show-dates[=FORMAT]        If this is set, dates are added to
 	                               each tag. Optional format is for strftime or
 	                               git log. ie 'default' 'unix'
 	                               Default format is strftime '%e %B %Y'
-	  -t TITLE
-	  --title TITLE                Show title of TITLE at top
-	                               (heading level will be increased
-	                               by 1 after title)
-	                               TITLE is "Changelog" by default, use
-	                               -T to omit
-	  -T
-	  --no-title                   Suppress title
+
+	  -H LEVEL
+	  --heading LEVEL
+	  --heading-level LEVEL        Set markdown heading level to LEVEL
+	                               LEVEL is 1 by default, ie. ##
+
+	  -L
+	  --last                       Only list changes since last tag
+	                               See also: --since
 
 	  -f PATTERN
 	  -g PATTERN
@@ -57,9 +56,24 @@ usage() {
 	  -F FORMAT
 	  --format FORMAT              Format for git log lines, default is "- %s"
 
+	  -A CHAR
+	  --heading-char CHAR          Char used for markdown headings, default is "#"
+
 	  -G
 	  --group-by-author            Output commits grouped per author
 
+	  -s TAG
+	  --since TAG                  Only list changes since TAG
+
+	  -t TITLE
+	  --title TITLE                Show title of TITLE at top
+	                               (heading level will be increased
+	                               by 1 after title)
+	                               TITLE is "Changelog" by default, use
+	                               '-T' to omit
+
+	  -T
+	  --no-title                   Suppress title
 END
 	exit 2
 }
@@ -71,8 +85,8 @@ parseCLI() {
 		getopt \
 		-q \
 		-n "$(basename "$0")" \
-		-o hH:d::t:f:g:F:TG \
-		--long help,heading-level:,heading:,show-dates::,title:,grep:,filter:,format:,no-title,group-by-author \
+		-o hH:d::t:f:g:F:TGs:LA: \
+		--long help,heading-level:,heading:,show-dates::,title:,grep:,filter:,format:,no-title,group-by-author,since:,last,heading-char: \
 		-- "$@"
 	); then
 		usage
@@ -108,6 +122,15 @@ parseCLI() {
 					-F|--format)
 						PRETTY_FORMAT="$2"
 						shift 2;;
+					-s|--since)
+						SINCE="$2";
+						shift 2;;
+					-L|--last)
+						setSinceFromLastTag
+						shift;;
+					-A|--heading-char)
+						HEADING_CHAR="$2"
+						shift 2;;
 					--)
 						shift;
 						break;;
@@ -120,8 +143,24 @@ parseCLI() {
 	COMMIT="${1:-HEAD}"
 }
 
+setSinceFromLastTag() {
+	local currentTag;
+
+	currentTag=$(getCurrentTag)
+	if [[ $? -ne 0 || -z $currentTag ]]; then
+		echo "Unable to get last tag" >&2
+		exit 2
+	fi
+
+	SINCE=$(getPreviousTag "$currentTag")
+	if [[ $? -ne 0 || -z $currentTag ]]; then
+		echo "Unable to get last tag" >&2
+		exit 2
+	fi
+}
+
 getCurrentTag() {
-	git describe --tags --abbrev=0 "${1:-${COMMIT}}"
+	git describe --tags "${1:-${COMMIT}}"
 }
 
 getPreviousTag() {
@@ -130,7 +169,15 @@ getPreviousTag() {
 		exit 1;
 	fi
 	local current="$1"
-	git tag -l --sort=-v:refname | grep -A1 -F "$current" | tail -1
+	local sinceCheck=''
+
+	# if [[ -n $SINCE ]]; then
+	# 	sinceCheck="if (\$0 == \"${SINCE}\") { exit };"
+	# fi
+
+	# echo  awk "{ if (!prev) { prev=\$0 }; ${sinceCheck} if (\$0 == \"${current}\") { exit }; prev=\$0 } END { print prev }"
+	git tag -l --sort=v:refname \
+		| awk "{ if (prev == \"\") { prev=\$0 }; ${sinceCheck} if (\$0 == \"${current}\") { exit }; prev=\$0 } END { print prev }"
 }
 
 makeHeading() {
@@ -140,7 +187,7 @@ makeHeading() {
 	local heading=""
 
 	for (( i = 0; i < $level; i++ )); do
-		heading="${heading}#"
+		heading="${heading}${HEADING_CHAR}"
 	done
 	echo "$heading $content"
 }
@@ -149,20 +196,27 @@ getTagDate() {
 	git log -n1 --pretty="format:%cd" --date="format:${DATE_FORMAT}" "$1"
 }
 
+getCommitsShort() {
+	local previousTag="$1"
+	local currentTag="$2"
+	local grep="$3"
+
+	if [[ -z "$grep" ]]; then
+		git shortlog -n -e -w76,3,4 --format="${PRETTY_FORMAT}" "${previousTag}..${currentTag}" \
+		| sed -r 's/^([^ \t])/- \0/;s/^\s{3}/    /'| sed -r 's/^/- /'
+	else
+		git shortlog -n -e -w76,3,4 --format="${PRETTY_FORMAT}" "${previousTag}..${currentTag}" \
+		| grep -E "$grep"| sed -r 's/^/- /'
+	fi
+}
+
 getCommits() {
 	local previousTag="$1"
 	local currentTag="$2"
 	local grep="$3"
 
 	if $USE_SHORTLOG; then
-		if [[ -z "$grep" ]]; then
-			git shortlog -n -e -w76,3,4 --format="${PRETTY_FORMAT}" "${previousTag}..${currentTag}" \
-			| sed -r 's/^([^ \t])/- \0/;s/^\s{3}/    /'
-		else
-			git shortlog -n -e -w76,3,4 --format="${PRETTY_FORMAT}" "${previousTag}..${currentTag}" \
-			| grep -E "$grep"
-		fi
-		return
+		return getCommitsShort "$previousTag" "$currentTag" "$grep"
 	fi
 
 	if [[ -z "$grep" ]]; then
@@ -170,15 +224,14 @@ getCommits() {
 			--date="format:${DATE_FORMAT}" \
 			--pretty="format:${PRETTY_FORMAT}" \
 			"${previousTag}..${currentTag}" \
-			| grep -vE 'Bump\s+(\w+\s+)?version'
-		return;
+			| grep -vE '(Bump\s+(\w+\s+)?version)|(^v[0-9\.]+)'| sed -r 's/^/- /'
+	else
+		git log $GIT_ARGS \
+			--date="format:${DATE_FORMAT}" \
+			--pretty="format:${PRETTY_FORMAT}" \
+			"${previousTag}..${currentTag}" \
+			| grep -E "$grep" | sed -r 's/^/- /'
 	fi
-
-	git log $GIT_ARGS \
-		--date="format:${DATE_FORMAT}" \
-		--pretty="format:${PRETTY_FORMAT}" \
-		"${previousTag}..${currentTag}" \
-		| grep -E "$grep"
 }
 
 main() {
@@ -188,6 +241,11 @@ main() {
 
 	if [[ $? -ne 0 || -z "$currentTag" ]]; then
 		echo "No current tag, cannot list changelog" >&2
+		exit 1
+	fi
+
+	if [[ $currentTag == $SINCE ]]; then
+		echo -e "SINCE is equal to current tag, cannot list changelog.\nTry using a different value for --since" >&2
 		exit 1
 	fi
 
@@ -206,6 +264,9 @@ main() {
 	local heading
 
 	while [[ -n $previousTag && $previousTag != $currentTag ]]; do
+		if [[ $currentTag == $SINCE ]]; then
+			break;
+		fi
 		heading="$currentTag"
 
 		if $SHOW_DATES; then
@@ -217,6 +278,7 @@ main() {
 		commits=$(
 			getCommits "$previousTag" "$currentTag" "$GREP"
 		)
+
 		if [[ -n "$commits" ]]; then
 			makeHeading "$heading"; echo
 			cat <<<$commits
