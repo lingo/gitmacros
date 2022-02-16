@@ -1,20 +1,46 @@
-#!/bin/bash
-
-git config --global alias.lg=log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative
-git config --global alias.sma=submodule add
-git config --global alias.gap=add --patch
-git config --global alias.rv=remote -v
-git config --global alias.ap=add --patch
-git config --global alias.dc=diff --cached
-git config --global alias.b=branch
-git config --global alias.subup=submodule update --init --recursive
-git config --global alias.slog=log --pretty=oneline
-git config --global alias.resetperms=!git diff -p -R --no-color | grep -E "^(diff|(old|new) mode)" --color=never | git apply
-git config --global alias.root=rev-parse --show-toplevel
-git config --global alias.feature=flow feature
-git config --global alias.bugfix=flow bugfix
-git config --global alias.hotfix=flow hotfix
-git config --global alias.last-ver=describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' production
-git config --global alias.lastver=describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' production
-git config --global alias.diffci=!bash -c "git slog ${1:-HEAD}..${2:-HEAD}"
-git config --global alias.logdiff=!bash -c "git slog ${1:-HEAD}..${2:-HEAD}"
+alias.aamend=commit -a --amend
+alias.aliases=!bash -c '(git config -l; git config --global -l) | grep -F alias.' | sort -u
+alias.amend=commit --amend
+alias.ap=add --patch
+alias.backup=!git push --force --no-verify origin HEAD:private/$(git config user.email)/$(git rev-parse --symbolic-full-name HEAD | sed -r "s@refs/heads/@@")
+alias.b=for-each-ref --sort='-committerdate' --format=%(refname:short) refs/heads/**
+alias.bugfix=flow bugfix
+alias.cam=commit -am
+alias.cb=!git rev-parse --symbolic-full-name HEAD  | sed -r 's@refs/heads/@@'
+alias.c=commit
+alias.ch=!git checkout $(git b | fzf)
+alias.cm=commit -m
+alias.cmp=!f() { local from="${1:-develop}"; local to="${2:-HEAD}"; git slog ${from}..${to}; }; f
+alias.co=checkout
+alias.cpab=cherry-pick --abort
+alias.cpc=cherry-pick --continue
+alias.cp=cherry-pick
+alias.dc=diff --cached
+alias.feature=flow feature
+alias.ff=merge --ff-only
+alias.fixmsg=commit -a --squash HEAD -m
+alias.fixup=commit --fixup
+alias.hotfix=flow hotfix
+alias.k=!gitk --all &
+alias.lastver=describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' main
+alias.lg=log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative
+alias.l=log
+alias.ls=slog
+alias.mab=merge --abort
+alias.mc=merge --continue
+alias.mt=mergetool
+alias.prepare=!f() { git fetch; git rebase -i --autosquash ${1:-origin/develop}; }; f
+alias.pullr=pull --rebase --autostash
+alias.qfix=commit -a --fixup HEAD -m
+alias.rbab=rebase --abort
+alias.rbcur=!git show -s -n1 REBASE_HEAD && git difftool -d REBASE_HEAD^..REBASE_HEAD
+alias.rbi=rebase -i
+alias.rbs=rebase --show-current-patch
+alias.rc=rebase --continue
+alias.resetperms=!git diff -p -R --no-color | grep -E ^(diff|(old|new) mode) --color=never | git apply
+alias.risq=rebase -ir --autosquash
+alias.root=rev-parse --show-toplevel
+alias.rv=remote -v
+alias.slog=log --pretty=oneline
+alias.squash=commit -a --squash
+alias.sw=switch
