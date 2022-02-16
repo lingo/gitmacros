@@ -1,6 +1,6 @@
 #!/bin/bash
 
-function getBranch() {
+getBranch() {
 	local ref=$(git name-rev --refs=refs/heads/\* "$@" | cut -d' ' -f2 )
 
 	if [[ -n "$ref" || "$ref" == "undefined" ]]; then
