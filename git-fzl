@@ -1,0 +1,16 @@
+#!/bin/bash
+
+
+commit="$( \
+  FZF_DEFAULT_COMMAND='git log --decorate --pretty="format:%Cgreen%h%Creset %Cblue%d%Creset %s" --color=always' \
+  fzf --tiebreak=begin,index +s --ansi \
+    --preview='echo {} | cut -d" " -f1 | xargs -n1 git show --color=always' \
+)"
+
+if [[ -n $commit ]]; then
+  commit="$(echo -n "$commit" | cut -d' ' -f1)"
+  git log -n1 --pretty=oneline "$commit"
+  echo -n "$commit" | tee | xclip -i -selection clipboard
+else
+  exit 1
+fi
