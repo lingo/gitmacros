@@ -2,6 +2,14 @@
 const { spawnSync } = require('child_process');
 const { writeFileSync, unlinkSync } = require('fs');
 
+let programName = 'git fix-issue';
+let isOutputToATerminal = false;
+
+function usage(program = programName) {
+  process.stderr.write(`Usage: ${program} "https://gitlab.com/.../-/issues/..."\n(or have issue link in clipboard)\n`);
+  process.exit(1);
+}
+
 function run(command, args = [], options = {}) {
   const cp = spawnSync(command, args, {
     encoding: 'utf8',
@@ -14,11 +22,6 @@ function run(command, args = [], options = {}) {
   }
 
   return cp.output;
-}
-
-function usage(program) {
-  process.stderr.write(`Usage: ${program} "https://gitlab.com/.../-/issues/..."\n(or have issue link in clipboard)\n`);
-  process.exit(1);
 }
 
 // e.g. https://gitlab.com/marama-labs-software/marama-frontend/-/issues/142
@@ -37,6 +40,31 @@ function saveToClipboard(data) {
   if (cp.status !== 0) {
     throw cp.error || new Error(`xclip -i failed, status ${cp.status}`);
   }
+}
+
+function gitRoot() {
+  const output = run('git', ['rev-parse', '--show-toplevel']);
+  return output.filter(Boolean).join('').trim();
+}
+
+function runGitCommit(message) {
+  const commitMessageFile = `${gitRoot()}/.git/GIT_FIX_ISSUE_COMMIT_MESSAGE`;
+  try {
+    writeFileSync(commitMessageFile, message, { encoding: 'utf-8' });
+    const output = run('git', ['commit', '-F', commitMessageFile, '-e'], { stdio: 'inherit' });
+    return output.filter(Boolean).map((x) => x.trim());
+  } finally {
+    try {
+      unlinkSync(commitMessageFile);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function hasStagedFiles() {
+  const output = run('git', ['diff', '--name-only', '--cached']);
+  return output.filter(Boolean).length > 0;
 }
 
 function getLink(args) {
@@ -67,58 +95,53 @@ function getCommitMessage(link) {
   return `fix: CHANGEME #${issue}\n\nFixes: #${issue}\nIssue-Link: ${link}\n`;
 }
 
-function hasStagedFiles() {
-  const output = run('git', ['diff', '--name-only', '--cached']);
-  return output.filter(Boolean).length > 0;
+function performCommit(commitMessage) {
+  process.stdout.write(commitMessage);
+
+  if (hasStagedFiles()) {
+    runGitCommit(commitMessage);
+  }
 }
 
-function gitRoot() {
-  const output = run('git', ['rev-parse', '--show-toplevel']);
-  return output.filter(Boolean).join('').trim();
-}
-
-function runGitCommit(message) {
-  const commitMessageFile = `${gitRoot()}/.git/GIT_FIX_ISSUE_COMMIT_MESSAGE`;
+// eslint-disable-next-line consistent-return
+function getCommitMessageOrFail(link) {
   try {
-    writeFileSync(commitMessageFile, message, { encoding: 'utf-8' });
-    const output = run('git', ['commit', '-F', commitMessageFile, '-e'], { stdio: 'inherit' });
-    return output.filter(Boolean).map((x) => x.trim());
-  } finally {
-    try {
-      unlinkSync(commitMessageFile);
-    } catch {
-      // ignore
-    }
+    return getCommitMessage(link);
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    usage();
+  }
+}
+
+function getLinkOrFail(args) {
+  const link = getLink(args);
+
+  if (!link) {
+    usage();
+  }
+
+  return link;
+}
+
+function processArgs(args) {
+  const [, program] = args;
+  programName = program || programName;
+
+  ({ isTTY: isOutputToATerminal } = process.stdout);
+
+  if (args.find((a) => /^--?h(elp)?/.test(a))) {
+    usage();
   }
 }
 
 function main(args) {
-  const [, program, arg] = args;
+  processArgs(args);
 
-  if (arg && arg.match(/^--?h(elp)?/)) {
-    usage(program);
-  }
+  const link = getLinkOrFail(args);
+  const commitMessage = getCommitMessageOrFail(link);
 
-  const link = getLink(args);
-
-  if (!link) {
-    usage(program);
-  }
-
-  let commitMessage;
-
-  try {
-    commitMessage = getCommitMessage(link);
-  } catch (error) {
-    process.stderr.write(`${error.message}\n`);
-    usage(program);
-  }
-
-  if (process.stdout.isTTY) {
-    process.stdout.write(commitMessage);
-    if (hasStagedFiles()) {
-      runGitCommit(commitMessage);
-    }
+  if (isOutputToATerminal) {
+    performCommit(commitMessage);
   } else {
     saveToClipboard(commitMessage);
   }
